@@ -514,17 +514,72 @@ These categories are future possibilities, not current product requirements or s
 
 # Deployment Strategy
 
-## Development
+> Preliminary strategy. Subject to change as implementation and operational requirements become better understood.
 
-Local workstation.
+## Distribution Model
 
-## Packaging
+Watchman is intended to be consumed as a Windows desktop product. A user obtains and runs a packaged Windows installer; the release channel and installer technology have not yet been selected.
 
-Windows installer.
+The installer is responsible for deploying the components included in that release, registering and configuring the Watchman Service, creating the required local storage and configuration, and performing initial setup. An installation is complete when the installed components and service are ready for runtime use.
 
-## Runtime
+The product is designed to operate entirely on the user's device. Normal installation and protection do not require cloud infrastructure.
 
-Windows Service started automatically.
+## Installed Components
+
+The package may contain:
+
+- Watchman Service
+- Watchman Dashboard
+- SQLite database
+- Configuration files
+- Optional AI models
+- Optional browser extensions
+
+The installer deploys and registers the service as the always-running system-wide protection component. It creates the SQLite database and configuration files used by local operation. The dashboard is installed for user configuration, diagnostics, and visibility; it is not required to remain open for protection. AI models may be included when the release supports image classification. Browser extensions may be offered as optional components for page-level awareness and are not prerequisites for the service's system-wide protection.
+
+The precise component-selection experience and whether extensions are installed by the installer or separately are open implementation decisions.
+
+## Runtime Model
+
+After installation, the Watchman Service is expected to start automatically and continue running without requiring an interactive dashboard session. It is the primary protection boundary and decision authority.
+
+The dashboard connects users to service-backed configuration and visibility, but closing it must not stop protection. Browser extensions provide additional page observations when installed and enabled; the service continues system-wide protection when no extension is present. No ongoing user interaction is required for the service to operate.
+
+## Data Storage and Privacy
+
+Operational data remains on the device in local storage. It includes:
+
+- Domain reputation data
+- Classification cache
+- User configuration
+- Allow-lists and block-lists
+- Statistics
+
+The service and dashboard use this local data for decisions and user visibility. Normal operation has no cloud dependency. The exact filesystem locations, access controls, backup behavior, and whether data is retained or removed during uninstall remain to be specified during implementation.
+
+## Updates and Rollback
+
+Updates are expected to be delivered as new Watchman releases. A release may update one or more of the following:
+
+- Watchman Service
+- Dashboard
+- Rules
+- Reputation data or logic
+- AI models
+
+The update discovery, download, installation, and notification mechanism is intentionally undefined. Regardless of mechanism, releases must remain installable and removable through standard Windows installation mechanisms without requiring operating system changes.
+
+The target lifecycle supports upgrade, downgrade, and uninstall. Releases build on earlier iterations rather than replacing their functionality. Version compatibility, local-data migration, rollback behavior for data/schema changes, and preservation or removal of user data are open design decisions; they must be resolved before an update mechanism is finalized.
+
+## Release Path
+
+Development and deployment progress through BCDD iterations:
+
+1. **Iteration 1:** Domain blocking, reputation, and URL heuristics.
+2. **Iteration 2:** Image classification.
+3. **Iteration 3:** Browser awareness.
+
+Each iteration is intended to produce a deployable Watchman release. A release exposes the behaviours completed for that iteration through the installed product. Later iterations build on earlier releases and preserve their existing functionality.
 
 ## Shipped Definition
 
@@ -535,6 +590,10 @@ A behaviour is shipped only when:
 - No unimplemented signal remains.
 - Associated tests pass.
 - Design document and BC agree.
+- The behaviour is included in a released installer.
+- The behaviour is reachable by the end user.
+
+An iteration is shipped only when all behaviours in that iteration are shipped.
 
 ---
 

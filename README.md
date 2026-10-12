@@ -74,6 +74,16 @@ Provide fast, privacy-preserving protection against pornographic content while k
 - **Dashboard:** Provides settings, statistics, classification history, allow/block and reputation management, and diagnostic tools.
 - **Browser extension:** Provides page-level visibility through DOM, metadata, text, and image inspection. It is an observation layer, not the source of truth, and the service makes decisions.
 
+## Deployment
+
+> Preliminary deployment strategy; subject to change as implementation and operational requirements become better understood.
+
+Watchman is intended to be consumed as a Windows desktop product installed from a packaged Windows installer. The installer is expected to deploy the service and dashboard, register and configure the service, and create local storage and configuration. AI models and browser extensions may be optional components.
+
+After installation, the Watchman Service is expected to start automatically and provide system-wide protection even when the dashboard is closed or no browser extension is installed. Operational data remains on the device; normal operation does not require cloud infrastructure.
+
+Updates are expected through new releases, but the update mechanism is not yet defined. Releases are intended to build on earlier BCDD iterations, and upgrade, downgrade, and uninstall should use standard Windows installation mechanisms.
+
 ## Development Methodology
 
 Watchman is developed using [Behaviour Contract Driven Development (BCDD)](https://github.com/adadevoh/bcdd/blob/main/bcdd.md). Product behavior is defined through design documents and behavior contracts before implementation begins.
