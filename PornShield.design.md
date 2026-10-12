@@ -1,10 +1,8 @@
-# PornShield.design.md
-
-# PornShield - Architecture & Development Roadmap ([BCDD](https://github.com/adadevoh/bcdd/blob/main/bcdd.md))
+# Watchman - Architecture & Development Roadmap ([BCDD](https://github.com/adadevoh/bcdd/blob/main/bcdd.md))
 
 ## Product Vision
 
-PornShield is a local-first, system-wide Windows content filtering platform whose initial purpose is to help users prevent access to pornographic content across browsers and desktop applications.
+Watchman is a local-first, system-wide Windows content filtering platform whose initial purpose is to help users prevent access to pornographic content across browsers and desktop applications.
 
 The product is built using [Behaviour Contract Driven Development (BCDD)](https://github.com/adadevoh/bcdd/blob/main/bcdd.md). The design document defines the product, behaviour catalogue, guardrails, architecture, deployment strategy, and iteration plan. Observable behaviour is described in Behaviour Contracts under `bc/`.
 
@@ -12,7 +10,7 @@ The product is built using [Behaviour Contract Driven Development (BCDD)](https:
 
 # Product Scope
 
-PornShield will evolve through three iterations:
+Watchman will evolve through three iterations:
 
 1. Domain and reputation-based blocking
 2. AI-assisted image classification
@@ -37,22 +35,52 @@ The image classifier is a last resort.
 
 ---
 
-# Locked Technology Stack
+# Recommended Tech Stack
 
-## Core Service
+## Core Engine
 
 - C++20
-- Windows Service
 - SQLite
-- spdlog
-- nlohmann/json
 - ONNX Runtime (Iteration 2)
 - OpenCV (Iteration 2)
+- spdlog
+- Boost.Asio (`boost::asio`)
+- nlohmann/json
 
-## Dashboard
+The core engine is Watchman's primary intelligence layer. It is responsible for:
+
+- Domain filtering
+- Reputation tracking
+- URL heuristics
+- Cache management
+- Content classification
+- Policy evaluation
+- Persistence
+- Observability and diagnostics
+
+The core engine must remain independent of the dashboard and any specific integration surface.
+
+## Windows Service
+
+- C++20
+
+The service hosts the core engine and provides always-running, system-wide protection. It remains the decision authority for requests from supported system and browser integrations.
+
+## Desktop Dashboard
 
 - C#
 - .NET
+
+The dashboard provides user-facing configuration and visibility:
+
+- Settings management
+- Statistics
+- Classification history
+- Domain allow/block management
+- Reputation management
+- Diagnostic tools
+
+The dashboard is separate from the filtering engine to support faster UI development, strong Windows integration, easier maintenance, and the use of existing .NET expertise.
 
 ## Browser Extension (Iteration 3)
 
@@ -60,37 +88,37 @@ The image classifier is a last resort.
 - Chrome Extension APIs
 - Edge Extension APIs
 
+The extension is an observation layer, not the source of truth. It provides browser content visibility while the Watchman Service remains the decision engine. Its responsibilities include:
+
+- DOM inspection
+- Metadata extraction
+- Page title extraction
+- Visible text extraction
+- Visible image extraction
+- Rendering block pages
+
 ---
+
+# Target Product Components
+
+Watchman is composed of four cooperating components:
+
+1. **Watchman Core Engine (C++)** — reusable classification and policy intelligence.
+2. **Watchman Windows Service (C++)** — always-running host for system-wide protection and the core engine.
+3. **Watchman Dashboard (C#/.NET)** — configuration, reporting, and diagnostics.
+4. **Watchman Browser Extension (TypeScript)** — browser visibility and page-level analysis.
+
+The dashboard and extension communicate with the service; neither becomes an alternate source of classification decisions.
 
 # High-Level Architecture
 
-```text
-+-------------------------+
-| Dashboard (.NET)        |
-+------------+------------+
-             |
-             v
-
-+-------------------------+
-| PornShield Service      |
-| C++                     |
-+-------------------------+
-| Domain Engine           |
-| Reputation Engine       |
-| Cache Manager           |
-| Rule Engine             |
-| SQLite Repository       |
-+------------+------------+
-             |
-             v
-
-+-------------------------+
-| Network Observation     |
-| DNS / URL Visibility    |
-+------------+------------+
-             |
-             v
-          Internet
+```mermaid
+flowchart TD
+    Dashboard["Dashboard (.NET)"] <-->|configuration, reports| Service["Watchman Windows Service (C++)"]
+    Extension["Browser Extension (TypeScript)"] <-->|page observations, decisions| Service
+    Service --> Engine["Watchman Core Engine (C++20)<br/>Domain and Reputation<br/>URL Heuristics and Policy<br/>Cache and Classification<br/>SQLite Persistence"]
+    Service --> Observation["System Network Observation (DNS / URL Visibility)"]
+    Observation --> Internet
 ```
 
 ---
@@ -101,117 +129,49 @@ The image classifier is a last resort.
 
 ## System Context Diagram
 
-```text
-+------------------+
-|      User        |
-+--------+---------+
-         |
-         v
-+------------------+
-|  Dashboard UI    |
-|   (.NET/C#)      |
-+--------+---------+
-         |
-         v
-+------------------+
-| PornShield       |
-| Service (C++)    |
-+--------+---------+
-         |
-         v
-+------------------+
-| Network Layer    |
-| DNS / URLs       |
-+--------+---------+
-         |
-         v
-      Internet
+```mermaid
+flowchart TD
+    User --> Dashboard["Dashboard UI (.NET/C#)"]
+    Dashboard --> Service["Watchman Service (C++)"]
+    Service --> Network["Network Layer (DNS / URLs)"]
+    Network --> Internet
 ```
 
 ## Iteration 1 Decision Pipeline
 
-```text
-Request
-   |
-   v
-Known Bad Cache?
-   |yes
-   +----> BLOCK
-   |
-   no
-   v
-Known Good Cache?
-   |yes
-   +----> ALLOW
-   |
-   no
-   v
-Blacklist Match?
-   |yes
-   +----> BLOCK
-   |
-   no
-   v
-Reputation Engine
-   |
-   v
-URL Heuristics
-   |
-   v
-Decision
+```mermaid
+flowchart TD
+    Request --> BadCache{"Known Bad Cache?"}
+    BadCache -->|yes| Block1["BLOCK"]
+    BadCache -->|no| GoodCache{"Known Good Cache?"}
+    GoodCache -->|yes| Allow["ALLOW"]
+    GoodCache -->|no| Blacklist{"Blacklist Match?"}
+    Blacklist -->|yes| Block2["BLOCK"]
+    Blacklist -->|no| Reputation["Reputation Engine"]
+    Reputation --> Heuristics["URL Heuristics"]
+    Heuristics --> Decision
 ```
 
 ## Iteration 2 Classification Pipeline
 
-```text
-Request
-   |
-   v
-Cache
-   |
-   v
-Domain Rules
-   |
-   v
-Reputation
-   |
-   v
-URL Heuristics
-   |
-   v
-Image Sampling
-   |
-   v
-ONNX Classifier
-   |
-   v
-Final Decision
+```mermaid
+flowchart TD
+    Request --> Cache
+    Cache --> DomainRules["Domain Rules"]
+    DomainRules --> Reputation
+    Reputation --> Heuristics["URL Heuristics"]
+    Heuristics --> Sampling["Image Sampling"]
+    Sampling --> Classifier["ONNX Classifier"]
+    Classifier --> Decision["Final Decision"]
 ```
 
 ## Iteration 3 Browser Integration
 
-```text
-+------------------+
-| Browser Extension|
-|  TypeScript      |
-+--------+---------+
-         |
-         | metadata
-         | DOM
-         | images
-         v
-+------------------+
-| PornShield       |
-| Service (C++)    |
-+--------+---------+
-         |
-         v
-+------------------+
-| Decision Engine  |
-+--------+---------+
-         |
-         v
- Allow / Block
+```mermaid
+flowchart TD
+    Extension["Browser Extension (TypeScript)"] -->|metadata, DOM, text, images| Service["Watchman Service (C++)"]
+    Service --> DecisionEngine["Decision Engine"]
+    DecisionEngine --> Outcome["Allow / Block"]
 ```
 
 
@@ -335,7 +295,7 @@ Deliver a functional system-wide blocker that requires no AI.
 
 ### What Users Gain
 
-Users can install PornShield and immediately receive protection against:
+Users can install Watchman and immediately receive protection against:
 
 - Known adult domains
 - Known adult DNS targets
@@ -467,20 +427,14 @@ Adult probability
 
 #### Classification Pipeline
 
-```text
-Request
-  ↓
-Cache
-  ↓
-Domain Rules
-  ↓
-Reputation
-  ↓
-URL Heuristics
-  ↓
-Image Classification
-  ↓
-Decision
+```mermaid
+flowchart TD
+    Request --> Cache
+    Cache --> DomainRules["Domain Rules"]
+    DomainRules --> Reputation
+    Reputation --> Heuristics["URL Heuristics"]
+    Heuristics --> Classification["Image Classification"]
+    Classification --> Decision
 ```
 
 ### Success Metric
@@ -519,6 +473,7 @@ Responsibilities:
 
 - Read DOM content
 - Read page metadata
+- Extract page titles and visible text
 - Inspect visible images
 - Replace pages with block screens
 
@@ -530,16 +485,12 @@ The C++ service remains the decision engine.
 
 Flow:
 
-```text
-Browser Page
-  ↓
-Extension Analysis
-  ↓
-PornShield Service
-  ↓
-Decision
-  ↓
-Render/Block
+```mermaid
+flowchart TD
+    Page["Browser Page"] --> Analysis["Extension Analysis"]
+    Analysis --> Service["Watchman Service"]
+    Service --> Decision
+    Decision --> Outcome["Render/Block"]
 ```
 
 ### Success Metric
@@ -547,6 +498,19 @@ Render/Block
 User-generated-content platforms can be filtered at page level rather than domain level.
 
 ---
+
+# Long-Term Extensibility (Not Current Scope)
+
+Watchman's long-term architecture is intended to support reusable content classification beyond pornography filtering. Potential future categories include:
+
+- Gambling
+- Malware
+- Violence
+- Drugs
+- Social media
+- Custom organizational policies
+
+These categories are future possibilities, not current product requirements or shipped behaviours. Each category must be added to the product scope and behaviour catalogue and specified by a Behaviour Contract before implementation.
 
 # Deployment Strategy
 

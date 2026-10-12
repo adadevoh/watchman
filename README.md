@@ -1,6 +1,10 @@
 # Watchman
 
-> "So you, son of man, I have made you a watchman..." — Ezekiel 33:7
+> "So you, son of man, I have made you a watchman for the house of Israel" — Ezekiel 33:7
+
+> "On your walls, O Jerusalem, I have set watchmen; all the day and all the night they shall never be silent" — Isaiah 62:6
+
+> "For this is the will of God, your sanctification: that you abstain from sexual immorality." — 1 Thessalonians 4:3-5
 
 Watchman is a local-first, system-wide Windows content filtering platform that uses domain reputation, DNS intelligence, URL heuristics, caching, and AI-powered image classification to help block pornographic content across browsers and desktop applications.
 
@@ -46,12 +50,13 @@ Provide fast, privacy-preserving protection against pornographic content while k
 - C++20
 - Windows Service
 - SQLite
+- Boost.Asio
 - spdlog
 - nlohmann/json
 
 ### AI & Computer Vision
-- ONNX Runtime
-- OpenCV
+- ONNX Runtime (Iteration 2)
+- OpenCV (Iteration 2)
 
 ### Dashboard
 - C#
@@ -61,6 +66,13 @@ Provide fast, privacy-preserving protection against pornographic content while k
 - TypeScript
 - Chrome Extension APIs
 - Edge Extension APIs
+
+## Architecture at a Glance
+
+- **Core engine:** Reusable intelligence layer for domain filtering, reputation, URL heuristics, caching, policy, classification, persistence, and diagnostics. It is independent of the UI and integration surfaces.
+- **Windows Service:** Hosts the core engine and provides always-running, system-wide protection. It is the decision authority.
+- **Dashboard:** Provides settings, statistics, classification history, allow/block and reputation management, and diagnostic tools.
+- **Browser extension:** Provides page-level visibility through DOM, metadata, text, and image inspection. It is an observation layer, not the source of truth, and the service makes decisions.
 
 ## Development Methodology
 
